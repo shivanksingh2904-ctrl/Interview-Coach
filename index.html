@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interview Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F4F2FA;--ink:#1B1730;--mute:#6B6785;--violet:#5B3DF5;--mint:#1E9E74;--amber:#B87400;--line:#DDD8EE}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 'Bricolage Grotesque',system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 20px 80px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px}
+.logo{font-weight:800;font-size:1.1rem;letter-spacing:-.01em}
+h1{font-size:clamp(1.9rem,5vw,2.8rem);font-weight:800;letter-spacing:-.025em;line-height:1.1;margin:0 0 14px}
+h1.q{font-size:clamp(1.5rem,4vw,2.1rem);font-weight:600;max-width:30ch}
+h2{font-size:1.3rem;margin:32px 0 12px}h3{margin:24px 0 8px}
+.lead{font-size:1.15rem;color:var(--mute);max-width:52ch}.mute{color:var(--mute);margin:4px 0}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;margin:12px 0}
+.narrow{max-width:420px}.quote{border-left:4px solid var(--violet);border-radius:4px 14px 14px 4px}
+label{display:block;font-weight:600;font-size:.9rem;margin-bottom:14px}
+input,select,textarea{display:block;width:100%;margin-top:6px;padding:10px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+textarea{resize:vertical;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+button{font:inherit;font-weight:600;padding:10px 20px;border-radius:8px;border:2px solid var(--violet);background:var(--violet);color:#fff;cursor:pointer}
+button.ghost{background:transparent;color:var(--violet)}button:disabled{opacity:.55;cursor:wait}
+:focus-visible{outline:3px solid #FFB800;outline-offset:2px}
+.err{color:#B3261E;min-height:1.4em;margin:4px 0 8px;font-weight:600}
+.bar{display:grid;grid-template-columns:90px 1fr 34px;gap:10px;align-items:center;margin:8px 0;text-transform:capitalize}
+.bar i{display:block;height:10px;background:var(--line);border-radius:6px;overflow:hidden}.bar u{display:block;height:100%}
+.bar b{text-align:right}
+.hist{display:flex;justify-content:space-between;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:10px;margin:8px 0;color:inherit;text-decoration:none}
+.hist:hover{border-color:var(--violet)}
+summary{cursor:pointer;display:flex;justify-content:space-between;gap:16px;font-weight:600}
+.empty{color:var(--mute);margin-top:28px}
+@media (prefers-reduced-motion:no-preference){button{transition:filter .15s}button:hover:not(:disabled){filter:brightness(1.1)}}
+</style></head>
+<body><main id="app"></main>
+<script>
+const $=s=>document.querySelector(s),DIMS=['clarity','structure','relevance','depth','confidence'];
+let token=localStorage.getItem('t'),S={};
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path,method='GET',body){
+  const r=await fetch('/api'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined});
+  const d=await r.json().catch(()=>({}));
+  if(r.status===401&&token){logout()}
+  if(!r.ok)throw new Error(Array.isArray(d.detail)?d.detail.map(x=>x.msg).join('. '):d.detail||'Something went wrong. Please try again.');
+  return d;
+}
+function shell(inner){$('#app').innerHTML=`<header><span class="logo">Interview Coach</span>${token?'<button class="ghost" onclick="logout()">Sign out</button>':''}</header>${inner}`}
+function logout(){token=null;localStorage.removeItem('t');authView()}
+function bar(l,v){const c=v>=7?'var(--mint)':v>=5?'var(--violet)':'var(--amber)';return `<div class="bar"><span>${l}</span><i><u style="width:${v*10}%;background:${c}"></u></i><b>${v}</b></div>`}
+
+function authView(){shell(`<h1>Practice the interview before it counts.</h1>
+<p class="lead">Answer realistic questions, get scored on five skills, and see which one to work on next.</p>
+<div class="card narrow"><label>Email<input id="em" type="email" autocomplete="email"></label>
+<label>Password (8 or more characters)<input id="pw" type="password" autocomplete="current-password"></label>
+<div id="err" class="err"></div><div class="row"><button onclick="auth('login')">Sign in</button><button class="ghost" onclick="auth('register')">Create account</button></div></div>`)}
+async function auth(kind){try{const d=await api('/'+kind,'POST',{email:$('#em').value.trim(),password:$('#pw').value});token=d.token;localStorage.setItem('t',token);home()}catch(e){$('#err').textContent=e.message}}
+
+function progress(a){const pts=a.trend,W=600,H=120,n=pts.length;
+  const xy=pts.map((p,i)=>[n<2?W/2:20+i*(W-40)/(n-1),H-10-(p.score/10)*(H-20)]);
+  return `<h2>Your progress</h2><div class="card"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Overall score for each interview">
+  <polyline fill="none" stroke="#5B3DF5" stroke-width="3" points="${xy.map(p=>p.join(',')).join(' ')}"/>${xy.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="#5B3DF5"/>`).join('')}</svg>
+  ${DIMS.map(d=>bar(d,a.averages[d])).join('')}<p class="mute">Your lowest average is <b>${a.weakest}</b>. Aim your next answers there.</p></div>`}
+
+async function home(){
+  if(!token)return authView();
+  try{const[a,l]=await Promise.all([api('/analytics'),api('/sessions')]);
+  shell(`<h1>Ready for your next round?</h1><div class="card"><div class="grid">
+  <label>Role<input id="role" value="Backend Developer" maxlength="80"></label>
+  <label>Type<select id="kind"><option value="behavioral">Behavioral</option><option value="technical">Technical</option><option value="hr">HR</option></select></label>
+  <label>Difficulty<select id="diff"><option>easy</option><option selected>medium</option><option>hard</option></select></label>
+  <label>Questions<select id="cnt"><option>3</option><option selected>5</option><option>8</option></select></label></div>
+  <div id="err" class="err"></div><button id="go" onclick="start()">Start interview</button></div>
+  ${a.answered?progress(a):'<p class="empty">No answers yet. Finish one interview and your progress will show up here.</p>'}
+  ${l.length?'<h2>Past interviews</h2>'+l.map(s=>`<a class="hist" href="#" onclick="report(${s.id});return false"><span>${esc(s.role)}, ${s.kind}</span><b>${s.overall??'unfinished'}</b></a>`).join(''):''}`)
+  }catch(e){if(token)shell(`<p class="err">${esc(e.message)}</p><button onclick="home()">Try again</button>`)}}
+
+async function start(){const b=$('#go');b.disabled=true;b.textContent='Preparing questions…';
+  try{S.s=await api('/sessions','POST',{role:$('#role').value,kind:$('#kind').value,difficulty:$('#diff').value,count:+$('#cnt').value});ask()}
+  catch(e){$('#err').textContent=e.message;b.disabled=false;b.textContent='Start interview'}}
+
+function ask(){const i=S.s.questions.findIndex(q=>!q.answer);if(i<0)return report(S.s.id);
+  S.i=i;S.t0=Date.now();const q=S.s.questions[i];
+  shell(`<p class="mute">Question ${i+1} of ${S.s.questions.length}, ${esc(q.category)}</p><h1 class="q">${esc(q.text)}</h1>
+  <textarea id="ans" rows="9" placeholder="Type your answer, or press Speak and talk it through."></textarea>
+  <div id="err" class="err"></div><div class="row"><button id="send" onclick="send()">Submit answer</button><button id="mic" class="ghost" onclick="mic()">Speak</button></div>`)}
+
+function mic(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!R)return($('#err').textContent='Speech input works in Chrome, Edge and Safari. You can type instead.');
+  if(S.rec){S.rec.stop();return}
+  const r=S.rec=new R(),ta=$('#ans'),base=ta.value;r.continuous=true;r.lang='en-US';
+  r.onresult=e=>{ta.value=(base+' '+[...e.results].map(x=>x[0].transcript).join(' ')).trim()};
+  r.onend=()=>{S.rec=null;const m=$('#mic');if(m)m.textContent='Speak'};r.start();$('#mic').textContent='Stop'}
+
+async function send(){const a=$('#ans').value.trim();if(!a)return($('#err').textContent='Write or speak an answer first.');
+  if(S.rec)S.rec.stop();const b=$('#send');b.disabled=true;b.textContent='Scoring…';
+  try{const q=await api('/questions/'+S.s.questions[S.i].id+'/answer','POST',{answer:a,seconds:Math.round((Date.now()-S.t0)/1000)});S.s.questions[S.i]=q;feedback(q)}
+  catch(e){$('#err').textContent=e.message;b.disabled=false;b.textContent='Submit answer'}}
+
+function feedback(q){const last=S.s.questions.every(x=>x.answer);
+  shell(`<p class="mute">Your score for this answer</p><h2 style="margin-top:0">${esc(q.text)}</h2>
+  <div class="card">${DIMS.map(d=>bar(d,q[d])).join('')}<p>${esc(q.feedback)}</p></div>
+  <h3>A stronger answer</h3><div class="card quote">${esc(q.improved)}</div>
+  <button onclick="ask()">${last?'See report':'Next question'}</button>`)}
+
+async function report(id){try{const s=await api('/sessions/'+id);
+  shell(`<h1>${esc(s.role)}</h1><p class="lead">${s.kind} interview. Overall score: <b>${s.overall??'none yet'}</b> out of 10.</p>
+  ${s.questions.map(q=>`<details class="card"><summary><span>${esc(q.text)}</span><b>${q.answer?q.avg:'skipped'}</b></summary>
+  ${q.answer?`<p class="mute">Your answer</p><p>${esc(q.answer)}</p>${DIMS.map(d=>bar(d,q[d])).join('')}<p>${esc(q.feedback)}</p><p class="mute">A stronger answer</p><p>${esc(q.improved)}</p>`:''}</details>`).join('')}
+  <div class="row"><button onclick="home()">Back to dashboard</button></div>`)}catch(e){home()}}
+
+home();
+</script></body></html>
